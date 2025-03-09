@@ -1,0 +1,80 @@
+import itertools
+import string
+import time
+import sys
+
+def fuerza_bruta(contraseña_objetivo, longitud_max=4):
+    """
+    Función que implementa un ataque de fuerza bruta para encontrar una contraseña.
+    
+    Args:
+        contraseña_objetivo: La contraseña que queremos descifrar
+        longitud_max: Longitud máxima de contraseña a probar
+    
+    Returns:
+        La contraseña encontrada o None si no se encuentra
+    """
+    # Caracteres a utilizar en las combinaciones
+    caracteres = string.ascii_lowercase + string.digits  # a-z, 0-9
+    
+    # Contador de intentos
+    intentos = 0
+    
+    # Tiempo de inicio
+    tiempo_inicio = time.time()
+    
+    print(f"Iniciando ataque de fuerza bruta para descifrar: '{contraseña_objetivo}'")
+    
+    # Probamos con diferentes longitudes de contraseña
+    for longitud in range(1, longitud_max + 1):
+        print(f"Probando con contraseñas de longitud {longitud}...")
+        
+        # Generamos todas las combinaciones posibles de la longitud actual
+        for combinacion in itertools.product(caracteres, repeat=longitud):
+            intentos += 1
+            
+            # Convertimos la tupla a string
+            contraseña_candidata = ''.join(combinacion)
+            
+            # Verificamos si es la contraseña correcta
+            if contraseña_candidata == contraseña_objetivo:
+                tiempo_total = time.time() - tiempo_inicio
+                print(f"\n¡Contraseña encontrada! '{contraseña_candidata}'")
+                print(f"Intentos realizados: {intentos}")
+                print(f"Tiempo empleado: {tiempo_total:.2f} segundos")
+                return contraseña_candidata
+            
+            # Mostramos progreso cada 10000 intentos
+            if intentos % 10000 == 0:
+                print(f"Intentos: {intentos}, Última probada: {contraseña_candidata}")
+    
+    print("\nNo se pudo encontrar la contraseña con la longitud máxima especificada.")
+    return None
+
+def verificar_confirmacion():
+    """
+    Solicita una confirmación al usuario antes de ejecutar el ataque de fuerza bruta.
+    """
+    print("ADVERTENCIA: Este programa es solo para fines educativos.")
+    print("El uso indebido de este tipo de técnicas puede ser ilegal.")
+    print("Para continuar, confirme que entiende esto.")
+    
+    confirmacion = input("\nEscriba exactamente 'juroquemisintencionesnosonbuenas' para continuar: ")
+    
+    if confirmacion != "juroquemisintencionesnosonbuenas":
+        print("Confirmación incorrecta. El programa terminará.")
+        sys.exit(1)
+        
+    print("Confirmación aceptada. Continuando con el programa...\n")
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    # Verificar la confirmación antes de proceder
+    verificar_confirmacion()
+    
+    # Solicitar la contraseña objetivo
+    objetivo = input("Ingrese la contraseña a descifrar: ")
+    longitud_maxima = int(input("Ingrese la longitud máxima a probar: "))
+    
+    # Ejecutamos el ataque de fuerza bruta
+    resultado = fuerza_bruta(objetivo, longitud_maxima)
