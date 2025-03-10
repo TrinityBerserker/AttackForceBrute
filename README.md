@@ -1,8 +1,8 @@
-# 🔐 Security Education Tool 💻
+## 🔐 Security Education Tool 💻
 
 A multi-language educational security tool designed to teach responsible security practices. 🛡️
 
-## ⚠️ Disclaimers ⚠️
+### ⚠️ Disclaimers ⚠️
 
 🇪🇸 **Español:**
 ADVERTENCIA: Este programa es solo para fines educativos.
@@ -19,11 +19,11 @@ To continue, confirm that you understand this.
 Неправильное использование подобных техник может быть незаконным.
 Чтобы продолжить, подтвердите, что вы понимаете это.
 
-## 🚀 Features
+### 🚀 Features
 - 🌐 Multi-language support
 - 📚 Educational security examples
 - 🔍 Ethical hacking demonstrations
 - 🔒 Best practices for defensive security
 
-## 🕵️‍♂️ Responsible Use
+### 🕵️‍♂️ Responsible Use
 This repository is meant to educate security professionals and enthusiasts about potential vulnerabilities and protection mechanisms. 🛠️ Only use these techniques in controlled environments with proper authorization. ⚙️
