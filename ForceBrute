@@ -2,53 +2,131 @@ import itertools
 import string
 import time
 import sys
+import multiprocessing
+import argparse
+from tqdm import tqdm
 
-def fuerza_bruta(contraseña_objetivo, longitud_max=4):
+def fuerza_bruta_chunk(args):
     """
-    Función que implementa un ataque de fuerza bruta para encontrar una contraseña.
+    Función que prueba un subconjunto de combinaciones posibles.
+    
+    Args:
+        args: Tupla con (caracteres, contraseña_objetivo, longitud, inicio, fin)
+    
+    Returns:
+        La contraseña encontrada o None si no se encuentra en este chunk
+    """
+    caracteres, contraseña_objetivo, longitud, inicio, fin = args
+    
+    # Generamos todas las combinaciones posibles de la longitud actual
+    total_combinaciones = len(caracteres) ** longitud
+    intentos_chunk = 0
+    
+    # Calculamos cuántas combinaciones saltar
+    for idx, combinacion in enumerate(itertools.product(caracteres, repeat=longitud)):
+        if idx < inicio:
+            continue
+        if idx >= fin:
+            break
+            
+        intentos_chunk += 1
+        
+        # Convertimos la tupla a string
+        contraseña_candidata = ''.join(combinacion)
+        
+        # Verificamos si es la contraseña correcta
+        if contraseña_candidata == contraseña_objetivo:
+            return contraseña_candidata, intentos_chunk
+            
+    return None, intentos_chunk
+
+def fuerza_bruta_paralelo(contraseña_objetivo, longitud_max=4, num_procesos=None, set_caracteres=None):
+    """
+    Función que implementa un ataque de fuerza bruta para encontrar una contraseña
+    utilizando procesamiento paralelo.
     
     Args:
         contraseña_objetivo: La contraseña que queremos descifrar
         longitud_max: Longitud máxima de contraseña a probar
+        num_procesos: Número de procesos a utilizar (por defecto: núcleos disponibles)
+        set_caracteres: Conjunto de caracteres a utilizar (por defecto: a-z, 0-9)
     
     Returns:
         La contraseña encontrada o None si no se encuentra
     """
+    # Usar todos los núcleos disponibles por defecto
+    if num_procesos is None:
+        num_procesos = multiprocessing.cpu_count()
+    
     # Caracteres a utilizar en las combinaciones
-    caracteres = string.ascii_lowercase + string.digits  # a-z, 0-9
+    if set_caracteres is None:
+        caracteres = string.ascii_lowercase + string.digits  # a-z, 0-9
+    else:
+        caracteres = set_caracteres
     
     # Contador de intentos
-    intentos = 0
+    intentos_totales = 0
     
     # Tiempo de inicio
     tiempo_inicio = time.time()
     
     print(f"Iniciando ataque de fuerza bruta para descifrar: '{contraseña_objetivo}'")
+    print(f"Utilizando {num_procesos} procesos en paralelo")
     
     # Probamos con diferentes longitudes de contraseña
     for longitud in range(1, longitud_max + 1):
         print(f"Probando con contraseñas de longitud {longitud}...")
         
-        # Generamos todas las combinaciones posibles de la longitud actual
-        for combinacion in itertools.product(caracteres, repeat=longitud):
-            intentos += 1
+        # Calculamos el número total de combinaciones para esta longitud
+        total_combinaciones = len(caracteres) ** longitud
+        
+        # Si hay pocas combinaciones, no usamos paralelismo
+        if total_combinaciones < 1000:
+            for combinacion in tqdm(itertools.product(caracteres, repeat=longitud), 
+                                  total=total_combinaciones, 
+                                  desc=f"Longitud {longitud}"):
+                intentos_totales += 1
+                
+                # Convertimos la tupla a string
+                contraseña_candidata = ''.join(combinacion)
+                
+                # Verificamos si es la contraseña correcta
+                if contraseña_candidata == contraseña_objetivo:
+                    tiempo_total = time.time() - tiempo_inicio
+                    print(f"\n¡Contraseña encontrada! '{contraseña_candidata}'")
+                    print(f"Intentos realizados: {intentos_totales}")
+                    print(f"Tiempo empleado: {tiempo_total:.2f} segundos")
+                    return contraseña_candidata
+        else:
+            # Dividimos el trabajo en chunks para procesamiento paralelo
+            chunk_size = total_combinaciones // num_procesos
             
-            # Convertimos la tupla a string
-            contraseña_candidata = ''.join(combinacion)
+            # Preparamos los argumentos para cada proceso
+            args_list = []
+            for i in range(num_procesos):
+                inicio = i * chunk_size
+                fin = (i + 1) * chunk_size if i < num_procesos - 1 else total_combinaciones
+                args_list.append((caracteres, contraseña_objetivo, longitud, inicio, fin))
             
-            # Verificamos si es la contraseña correcta
-            if contraseña_candidata == contraseña_objetivo:
-                tiempo_total = time.time() - tiempo_inicio
-                print(f"\n¡Contraseña encontrada! '{contraseña_candidata}'")
-                print(f"Intentos realizados: {intentos}")
-                print(f"Tiempo empleado: {tiempo_total:.2f} segundos")
-                return contraseña_candidata
-            
-            # Mostramos progreso cada 10000 intentos
-            if intentos % 10000 == 0:
-                print(f"Intentos: {intentos}, Última probada: {contraseña_candidata}")
+            # Creamos un pool de procesos
+            with multiprocessing.Pool(processes=num_procesos) as pool:
+                # Usamos tqdm para mostrar una barra de progreso
+                with tqdm(total=total_combinaciones, desc=f"Longitud {longitud}") as pbar:
+                    for resultado, intentos_chunk in pool.imap_unordered(fuerza_bruta_chunk, args_list):
+                        intentos_totales += intentos_chunk
+                        pbar.update(intentos_chunk)
+                        
+                        if resultado:
+                            tiempo_total = time.time() - tiempo_inicio
+                            print(f"\n¡Contraseña encontrada! '{resultado}'")
+                            print(f"Intentos realizados: {intentos_totales}")
+                            print(f"Tiempo empleado: {tiempo_total:.2f} segundos")
+                            return resultado
     
+    tiempo_total = time.time() - tiempo_inicio
     print("\nNo se pudo encontrar la contraseña con la longitud máxima especificada.")
+    print(f"Intentos realizados: {intentos_totales}")
+    print(f"Tiempo empleado: {tiempo_total:.2f} segundos")
     return None
 
 def verificar_confirmacion():
@@ -67,14 +145,48 @@ def verificar_confirmacion():
         
     print("Confirmación aceptada. Continuando con el programa...\n")
 
-# Ejemplo de uso
-if __name__ == "__main__":
-    # Verificar la confirmación antes de proceder
-    verificar_confirmacion()
+def main():
+    # Configurar el parser de argumentos
+    parser = argparse.ArgumentParser(description='Ataque de fuerza bruta para fines educativos.')
+    parser.add_argument('-p', '--password', help='Contraseña a descifrar (para pruebas)')
+    parser.add_argument('-l', '--length', type=int, default=4, help='Longitud máxima a probar')
+    parser.add_argument('-c', '--charset', choices=['simple', 'full', 'custom'], default='simple', 
+                      help='Conjunto de caracteres: simple (a-z, 0-9), full (a-zA-Z0-9!@#$...)')
+    parser.add_argument('--custom-charset', help='Caracteres personalizados si se elige la opción custom')
+    parser.add_argument('-j', '--jobs', type=int, help='Número de procesos a utilizar')
+    parser.add_argument('--no-confirm', action='store_true', help='Omitir confirmación de seguridad')
     
-    # Solicitar la contraseña objetivo
-    objetivo = input("Ingrese la contraseña a descifrar: ")
-    longitud_maxima = int(input("Ingrese la longitud máxima a probar: "))
+    args = parser.parse_args()
+    
+    # Definir el conjunto de caracteres
+    if args.charset == 'simple':
+        charset = string.ascii_lowercase + string.digits
+    elif args.charset == 'full':
+        charset = string.ascii_letters + string.digits + string.punctuation
+    elif args.charset == 'custom' and args.custom_charset:
+        charset = args.custom_charset
+    else:
+        charset = string.ascii_lowercase + string.digits
+    
+    # Verificar confirmación si no se ha omitido
+    if not args.no_confirm:
+        verificar_confirmacion()
+    
+    # Obtener la contraseña objetivo
+    if args.password:
+        objetivo = args.password
+    else:
+        objetivo = input("Ingrese la contraseña a descifrar: ")
+    
+    # Obtener longitud máxima
+    longitud_maxima = args.length if args.length else int(input("Ingrese la longitud máxima a probar: "))
+    
+    # Mostrar información antes de comenzar
+    print(f"Conjunto de caracteres: {charset}")
+    print(f"Espacio de búsqueda: {sum(len(charset)**i for i in range(1, longitud_maxima+1))} combinaciones posibles")
     
     # Ejecutamos el ataque de fuerza bruta
-    resultado = fuerza_bruta(objetivo, longitud_maxima)
+    resultado = fuerza_bruta_paralelo(objetivo, longitud_maxima, args.jobs, charset)
+
+if __name__ == "__main__":
+    main()
