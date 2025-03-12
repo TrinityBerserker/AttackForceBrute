@@ -27,3 +27,10 @@ To continue, confirm that you understand this.
 
 ### 🕵️‍♂️ Responsible Use
 This repository is meant to educate security professionals and enthusiasts about potential vulnerabilities and protection mechanisms. 🛠️ Only use these techniques in controlled environments with proper authorization. ⚙️
+
+
+### 🕵️‍♂️ Instalation
+
+```sh
+pip install tqdm
+
